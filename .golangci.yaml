@@ -1,0 +1,71 @@
+linters:
+  enable:
+    - asciicheck
+    - bidichk
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - forcetypeassert
+    - funlen
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    - gofmt
+    - goheader
+    - goimports
+    - gomodguard
+    - goprintffuncname
+    - gosimple
+    - govet
+    - importas
+    - ineffassign
+    - ireturn
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nilnil
+    - nolintlint
+    - nonamedreturns
+    - predeclared
+    - promlinter
+    - revive
+    - staticcheck
+    - stylecheck
+    - tenv
+    - thelper
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varnamelen
+    - wsl
+    - nlreturn
+linters-settings:
+  govet:
+    disable:
+      - printf
+  staticcheck:
+    checks:
+      - all
+  stylecheck:
+    checks:
+      - all
+issues:
+  exclude-rules:
+    - path: main\.go
+      linters:
+        - gochecknoinits
+  include:
+    - EXC0002
+    - EXC0005
+    - EXC0012
+    - EXC0013
+    - EXC0014
+    - EXC0015
