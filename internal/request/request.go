@@ -79,8 +79,8 @@ var (
 	WeeklyPayFrequencyCode = PayFrequencyCode{Code: "WEEKLY"}
 )
 
-func (pfc *PayFrequencyCode) String() string {
-	switch *pfc {
+func (pfc PayFrequencyCode) String() string {
+	switch pfc {
 	case MonthlyPayFrequencyCode:
 		return "monthly"
 	case SemiMonthlyPayFrequencyCode:
