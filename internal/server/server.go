@@ -160,7 +160,9 @@ func (params *requestParams) retrieveOrRequest(cache responseCache, limiter *rat
 
 // HandleHealthCheck handles a health check request. It always returns a 204 No Content response.
 func HandleHealthCheck(resp http.ResponseWriter, req *http.Request) {
-	glog.V(10).Infof("Handling health check request from %s to URL `%s`", req.RemoteAddr, req.URL, req.Pattern)
+	glog.V(10).Infof(
+		"Handling health check request from %s to URL `%s` matching pattern %s",
+		req.RemoteAddr, req.URL, req.Pattern)
 
 	resp.WriteHeader(http.StatusNoContent)
 }
