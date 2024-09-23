@@ -115,7 +115,7 @@ func main() {
 		port = ":" + port
 	}
 
-	handler, err := server.NewRequestHandler(cacheSize)
+	handler, err := server.NewRequestHandler(cacheSize, rateLimit)
 	if err != nil {
 		glog.Errorf("failed to create request handler: %s", err)
 
