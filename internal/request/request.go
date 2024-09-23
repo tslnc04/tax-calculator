@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/tslnc04/tax-calculator/internal/jurisdiction"
 )
 
@@ -89,6 +90,8 @@ func (pfc *PayFrequencyCode) String() string {
 	case WeeklyPayFrequencyCode:
 		return "weekly"
 	default:
+		glog.V(10).Infof("Invalid pay frequency being converted to string: %+v", pfc)
+
 		return ""
 	}
 }
@@ -106,6 +109,8 @@ func (pfc *PayFrequencyCode) Set(value string) error {
 	case "weekly":
 		*pfc = WeeklyPayFrequencyCode
 	default:
+		glog.V(10).Infof("Invalid pay frequency being set: %s", value)
+
 		*pfc = MonthlyPayFrequencyCode
 	}
 
@@ -132,6 +137,19 @@ const (
 	// considered opaque.
 	PeriodicSalaryFrequency SalaryFrequency = "salary_per_period"
 )
+
+func (f SalaryFrequency) String() string {
+	switch f {
+	case AnnualSalaryFrequency:
+		return "annual"
+	case PeriodicSalaryFrequency:
+		return "periodic"
+	default:
+		glog.V(10).Infof("Invalid salary frequency being converted to string: %s", string(f))
+
+		return ""
+	}
+}
 
 func (f SalaryFrequency) validate() error {
 	switch f {

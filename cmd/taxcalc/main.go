@@ -88,7 +88,8 @@ func main() {
 	}
 
 	if flag.NArg() != 1 {
-		glog.Error("salary must be specified")
+		glog.Error("Salary must be specified")
+
 		fmt.Print(usage)
 
 		os.Exit(2)
@@ -96,7 +97,7 @@ func main() {
 
 	salary, err := strconv.ParseFloat(flag.Arg(0), 64)
 	if err != nil {
-		glog.Errorf("failed to parse salary: %s", err)
+		glog.Errorf("Failed to parse salary: %s", err)
 
 		os.Exit(2)
 	}
@@ -106,14 +107,14 @@ func main() {
 	if state != "" {
 		state = strings.ToUpper(state)
 
-		glog.V(10).Infof("adding state: %s", state)
+		glog.V(10).Infof("Adding state: %s", state)
 
 		builder.WithJurisdictionsByCode(state)
 	}
 
 	response, err := builder.Send()
 	if err != nil {
-		glog.Errorf("failed to send request: %s", err)
+		glog.Errorf("Failed to send request: %s", err)
 
 		os.Exit(2)
 	}

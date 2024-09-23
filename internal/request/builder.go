@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/golang/glog"
 	"github.com/tslnc04/tax-calculator/internal/jurisdiction"
 	"github.com/tslnc04/tax-calculator/internal/response"
 )
@@ -32,8 +33,12 @@ func NewBuilder(url ...string) *Builder {
 		url = append(url, APIURL)
 	}
 
+	firstURL := url[0]
+
+	glog.V(10).Infof("Initializing builder with url=`%s`", firstURL)
+
 	return &Builder{
-		URL: url[0],
+		URL: firstURL,
 	}
 }
 
@@ -42,6 +47,8 @@ func (builder *Builder) WithPayFrequency(payFrequencyCode PayFrequencyCode) *Bui
 	if err := builder.validate(); err != nil {
 		return builder
 	}
+
+	glog.V(10).Infof("Setting pay frequency to %s", payFrequencyCode)
 
 	builder.payFrequencyCode = &payFrequencyCode
 
@@ -54,6 +61,8 @@ func (builder *Builder) WithJurisdictions(jurisdictions ...*jurisdiction.Jurisdi
 	if err := builder.validate(); err != nil {
 		return builder
 	}
+
+	glog.V(10).Infof("Adding %d jurisdictions", len(jurisdictions))
 
 	builder.jurisdictions = append(builder.jurisdictions, jurisdictions...)
 
@@ -68,9 +77,15 @@ func (builder *Builder) WithJurisdictionsByCode(jurisdictionCodes ...string) *Bu
 		return builder
 	}
 
+	glog.V(10).Infof("Adding %d jurisdictions by code", len(jurisdictionCodes))
+
 	if len(jurisdiction.JurisdictionsByCode) < 1 {
+		glog.V(10).Infof("No jurisdictions loaded, attempting to load now")
+
 		_, err := jurisdiction.LoadJurisdictions()
 		if err != nil {
+			glog.V(10).Infof("Failed to load jurisdictions: %s", err)
+
 			builder.errorMessage = err.Error()
 
 			return builder
@@ -84,6 +99,8 @@ func (builder *Builder) WithJurisdictionsByCode(jurisdictionCodes ...string) *Bu
 	for _, code := range jurisdictionCodes {
 		jurisdiction, ok := jurisdiction.JurisdictionsByCode[code]
 		if !ok {
+			glog.V(10).Infof("No jurisdiction found for code: %s", code)
+
 			builder.errorMessage = fmt.Sprintf("no jurisdiction found for code: %s", code)
 
 			return builder
@@ -103,13 +120,19 @@ func (builder *Builder) WithSalary(amount float64, frequency SalaryFrequency) *B
 		return builder
 	}
 
+	glog.V(10).Infof("Adding salary of %.2f with frequency %s", amount, frequency)
+
 	if amount < 0 {
+		glog.V(10).Infof("Salary amount is negative")
+
 		builder.errorMessage = "salary amount must be non-negative"
 
 		return builder
 	}
 
 	if err := frequency.validate(); err != nil {
+		glog.V(10).Infof("Salary frequency is invalid: %s", err)
+
 		builder.errorMessage = err.Error()
 
 		return builder
@@ -127,14 +150,20 @@ func (builder *Builder) WithHourly(hours, rate float64) *Builder {
 		return builder
 	}
 
-	if rate < 0 {
-		builder.errorMessage = "hourly rate must be non-negative"
+	glog.V(10).Infof("Adding hourly rate of %.2f with %.2f hours", rate, hours)
+
+	if hours < 0 {
+		glog.V(10).Infof("Hourly hours is negative: %.2f", hours)
+
+		builder.errorMessage = "hourly hours must be non-negative"
 
 		return builder
 	}
 
-	if hours < 0 {
-		builder.errorMessage = "hourly hours must be non-negative"
+	if rate < 0 {
+		glog.V(10).Infof("Hourly rate is negative: %.2f", rate)
+
+		builder.errorMessage = "hourly rate must be non-negative"
 
 		return builder
 	}
@@ -151,14 +180,20 @@ func (builder *Builder) WithOvertime(hours, rate float64) *Builder {
 		return builder
 	}
 
-	if rate < 0 {
-		builder.errorMessage = "overtime rate must be non-negative"
+	glog.V(10).Infof("Adding overtime rate of %.2f with %.2f hours", rate, hours)
+
+	if hours < 0 {
+		glog.V(10).Infof("Overtime hours is negative: %.2f", hours)
+
+		builder.errorMessage = "overtime hours must be non-negative"
 
 		return builder
 	}
 
-	if hours < 0 {
-		builder.errorMessage = "overtime hours must be non-negative"
+	if rate < 0 {
+		glog.V(10).Infof("Overtime rate is negative: %.2f", rate)
+
+		builder.errorMessage = "overtime rate must be non-negative"
 
 		return builder
 	}
@@ -175,14 +210,20 @@ func (builder *Builder) WithDoubleTime(hours, rate float64) *Builder {
 		return builder
 	}
 
-	if rate < 0 {
-		builder.errorMessage = "double time rate must be non-negative"
+	glog.V(10).Infof("Adding double time rate of %.2f with %.2f hours", rate, hours)
+
+	if hours < 0 {
+		glog.V(10).Infof("Double time hours is negative: %.2f", hours)
+
+		builder.errorMessage = "double time hours must be non-negative"
 
 		return builder
 	}
 
-	if hours < 0 {
-		builder.errorMessage = "double time hours must be non-negative"
+	if rate < 0 {
+		glog.V(10).Infof("Double time rate is negative: %.2f", rate)
+
+		builder.errorMessage = "double time rate must be non-negative"
 
 		return builder
 	}
@@ -213,24 +254,34 @@ func (builder *Builder) Send() (*response.Response, error) {
 		return nil, err
 	}
 
+	glog.V(10).Infof("Sending request to %s", builder.URL)
+
 	requestJSON, err := json.Marshal(builder.buildRequest())
 	if err != nil {
+		glog.V(10).Infof("Failed to JSON marshal request to ADP API: %s", err)
+
 		return nil, err
 	}
 
 	resp, err := http.Post(builder.URL, "application/json", bytes.NewBuffer(requestJSON))
 	if err != nil {
+		glog.V(10).Infof("Failed to send request to ADP API: %s", err)
+
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		glog.V(10).Infof("Status was not OK sending request to ADP API: %s", resp.Status)
+
 		return nil, fmt.Errorf("status was not OK sending request: %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		glog.V(10).Infof("Failed to read response body from ADP API: %s", err)
+
 		return nil, err
 	}
 
@@ -238,6 +289,8 @@ func (builder *Builder) Send() (*response.Response, error) {
 
 	err = json.Unmarshal(body, &response)
 	if err != nil {
+		glog.V(10).Infof("Failed to JSON unmarshal ADP API response: %s", err)
+
 		return nil, err
 	}
 
@@ -247,8 +300,12 @@ func (builder *Builder) Send() (*response.Response, error) {
 // buildRequest builds the request to the ADP API. This is called by [Send] and should not be called directly. It
 // performs no validation and does not modify the builder.
 func (builder *Builder) buildRequest() *Request {
+	glog.V(10).Infof("Building request to ADP API")
+
 	payFrequency := builder.payFrequencyCode
 	if payFrequency == nil {
+		glog.V(10).Info("No pay frequency specified, defaulting to monthly")
+
 		payFrequency = &MonthlyPayFrequencyCode
 	}
 

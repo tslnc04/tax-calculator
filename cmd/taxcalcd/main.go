@@ -94,7 +94,7 @@ func main() {
 	http.HandleFunc(fmt.Sprintf("GET %s", server.APIBasePath), server.HandleRequest)
 	http.HandleFunc("/", server.HandleHealthCheck)
 
-	glog.V(10).Infof("starting server on port %s", port)
+	glog.V(10).Infof("Starting server on port %s", port)
 
 	err := http.ListenAndServe(port, nil)
 	if err != nil {
