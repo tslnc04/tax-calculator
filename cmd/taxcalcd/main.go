@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/tslnc04/tax-calculator/internal/server"
@@ -58,6 +59,9 @@ The flags are:
 	-p, -port string
 		Port to listen on. Defaults to 8080.
 
+	-r, -rate_limit duration
+		Requests to the ADP API are rate limited to one per this duration. Defaults to 1s.
+
 	-v int
 		Maximum log verbosity. Defaults to 0.
 `
@@ -66,17 +70,20 @@ var (
 	cacheSize int
 	help      bool
 	port      string
+	rateLimit time.Duration
 )
 
 func init() {
 	const (
-		cacheUsage = "number of entries to keep in the response cache"
-		helpUsage  = "print this help message"
-		portUsage  = "port to listen on"
+		cacheUsage     = "number of entries to keep in the response cache"
+		helpUsage      = "print this help message"
+		portUsage      = "port to listen on"
+		rateLimitUsage = "requests to the ADP API are rate limited to one per this duration"
 
 		defaultCacheSize = 1000
 		defaultHelp      = false
 		defaultPort      = ":8080"
+		defaultRateLimit = time.Second
 	)
 
 	flag.IntVar(&cacheSize, "cache_size", defaultCacheSize, cacheUsage)
@@ -87,6 +94,9 @@ func init() {
 
 	flag.StringVar(&port, "port", defaultPort, portUsage)
 	flag.StringVar(&port, "p", defaultPort, portUsage+" (shorthand)")
+
+	flag.DurationVar(&rateLimit, "rate_limit", defaultRateLimit, rateLimitUsage)
+	flag.DurationVar(&rateLimit, "r", defaultRateLimit, rateLimitUsage+" (shorthand)")
 
 	// Tell glog to log to stderr as well as the log file.
 	_ = flag.Set("alsologtostderr", "true")

@@ -3,15 +3,18 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/golang/glog"
 	lruv2 "github.com/hashicorp/golang-lru/v2"
 	"github.com/tslnc04/tax-calculator/internal/request"
 	"github.com/tslnc04/tax-calculator/internal/response"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -24,18 +27,22 @@ type responseCache = *lruv2.Cache[string, *response.Response]
 // RequestHandler is a handler for the taxcalcd web server. It includes a cache for storing responses from the ADP API.
 // Its zero value is not valid and must be initialized with [NewRequestHandler].
 type RequestHandler struct {
-	cache responseCache
+	cache   responseCache
+	limiter *rate.Limiter
 }
 
-// NewRequestHandler creates a new request handler with the given cache size. Each cached response will consume roughly
-// 600 bytes.
-func NewRequestHandler(cacheSize int) (*RequestHandler, error) {
+// NewRequestHandler creates a new request handler with the given cache size and rate limit. Each cached response will
+// consume roughly 600 bytes. Requests to the ADP API are rate limited to one per the given rate limit.
+func NewRequestHandler(cacheSize int, rateLimit time.Duration) (*RequestHandler, error) {
 	cache, err := lruv2.New[string, *response.Response](cacheSize)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RequestHandler{cache: cache}, nil
+	limiter := rate.NewLimiter(rate.Every(rateLimit), 1)
+	handler := &RequestHandler{cache: cache, limiter: limiter}
+
+	return handler, nil
 }
 
 // ServeHTTP handles a request for calculating the net income. It expects the salary to be specified in the query string
@@ -52,7 +59,7 @@ func (handler *RequestHandler) ServeHTTP(resp http.ResponseWriter, req *http.Req
 		return
 	}
 
-	response, err := params.retrieveOrRequest(handler.cache)
+	response, err := params.retrieveOrRequest(handler.cache, handler.limiter)
 	if err != nil {
 		glog.V(10).Infof("Failed to retrieve or request: %s", err)
 
@@ -116,8 +123,9 @@ func (params *requestParams) buildRequest() *request.Builder {
 	return builder
 }
 
-// retrieveOrRequest attempts to retrieve a response from the cache or send a request to the ADP API.
-func (params *requestParams) retrieveOrRequest(cache responseCache) (*response.Response, error) {
+// retrieveOrRequest attempts to retrieve a response from the cache or send a request to the ADP API. It will rate limit
+// requests to the ADP API.
+func (params *requestParams) retrieveOrRequest(cache responseCache, limiter *rate.Limiter) (*response.Response, error) {
 	cacheKey := params.getCacheKey()
 	cachedResponse, ok := cache.Get(cacheKey)
 
@@ -127,7 +135,16 @@ func (params *requestParams) retrieveOrRequest(cache responseCache) (*response.R
 		return cachedResponse, nil
 	}
 
-	glog.V(10).Infof("No entry in cache for key `%s`, sending request to ADP API", cacheKey)
+	glog.V(10).Infof("No entry in cache for key `%s`, waiting for rate limit", cacheKey)
+
+	err := limiter.Wait(context.Background())
+	if err != nil {
+		glog.V(10).Infof("Failed to wait for rate limit: %s", err)
+
+		return nil, fmt.Errorf("failed to wait for rate limit: %w", err)
+	}
+
+	glog.V(10).Info("Successfully waited for rate limit, sending request to ADP API")
 
 	response, err := params.buildRequest().Send()
 	if err != nil {
