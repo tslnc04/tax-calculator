@@ -27,7 +27,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -115,21 +114,18 @@ func main() {
 		port = ":" + port
 	}
 
-	handler, err := server.NewRequestHandler(cacheSize, rateLimit)
+	mux, err := server.NewRequestMux(cacheSize, rateLimit)
 	if err != nil {
-		glog.Errorf("failed to create request handler: %s", err)
+		glog.Errorf("Failed to create request mux: %s", err)
 
 		os.Exit(2)
 	}
 
-	http.Handle(fmt.Sprintf("GET %s", server.APIBasePath), handler)
-	http.HandleFunc("/", server.HandleHealthCheck)
-
 	glog.V(10).Infof("Starting server on port %s", port)
 
-	err = http.ListenAndServe(port, nil)
+	err = http.ListenAndServe(port, mux)
 	if err != nil {
-		glog.Errorf("failed to start server: %s", err)
+		glog.Errorf("Failed to start server: %s", err)
 
 		os.Exit(2)
 	}

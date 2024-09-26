@@ -22,6 +22,22 @@ const (
 	APIBasePath = "/api/v1"
 )
 
+// NewRequestMux attaches all the routes for the taxcalcd web server to a ServeMux. It returns the ServeMux and an error
+// if one occurred.
+func NewRequestMux(cacheSize int, rateLimit time.Duration) (*http.ServeMux, error) {
+	requestHandler, err := NewRequestHandler(cacheSize, rateLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	mux := http.NewServeMux()
+
+	mux.Handle(APIBasePath+"/", requestHandler)
+	mux.HandleFunc("/", HandleHealthCheck)
+
+	return mux, nil
+}
+
 type responseCache = *lruv2.Cache[string, *response.Response]
 
 // RequestHandler is a handler for the taxcalcd web server. It includes a cache for storing responses from the ADP API.
@@ -48,7 +64,7 @@ func NewRequestHandler(cacheSize int, rateLimit time.Duration) (*RequestHandler,
 // ServeHTTP handles a request for calculating the net income. It expects the salary to be specified in the query string
 // as a float and the pay frequency and state as strings. It will return a CSV response with the net income.
 func (handler *RequestHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
-	glog.V(10).Infof("Handling request from %s to URL `%s` with pattern %s", req.RemoteAddr, req.URL, req.Pattern)
+	logRequest(req, "API")
 
 	params, err := parseRequestParams(req.URL)
 	if err != nil {
@@ -160,9 +176,24 @@ func (params *requestParams) retrieveOrRequest(cache responseCache, limiter *rat
 
 // HandleHealthCheck handles a health check request. It always returns a 204 No Content response.
 func HandleHealthCheck(resp http.ResponseWriter, req *http.Request) {
-	glog.V(10).Infof(
-		"Handling health check request from %s to URL `%s` matching pattern %s",
-		req.RemoteAddr, req.URL, req.Pattern)
+	logRequest(req, "health check")
 
 	resp.WriteHeader(http.StatusNoContent)
+}
+
+// logRequest logs an incoming request for the endpoint with a given description. If the request has a `X-Forwarded-For`
+// header, it will log the IP address from that header. Otherwise, it will log the IP address from the `RemoteAddr`
+// field.
+func logRequest(req *http.Request, description string) {
+	if req.Header.Get("X-Forwarded-For") != "" {
+		glog.V(10).Infof(
+			"Handling %s request from %s to URL `%s` matching pattern %s",
+			description, req.Header.Get("X-Forwarded-For"), req.URL, req.Pattern)
+
+		return
+	}
+
+	glog.V(10).Infof(
+		"Handling %s request from %s to URL `%s` matching pattern %s",
+		description, req.RemoteAddr, req.URL, req.Pattern)
 }
