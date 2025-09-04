@@ -3,6 +3,7 @@ package request
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,9 @@ import (
 	"github.com/tslnc04/tax-calculator/internal/jurisdiction"
 	"github.com/tslnc04/tax-calculator/internal/response"
 )
+
+const referer = "https://www.adp.com/"
+const userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:142.0) Gecko/20100101 Firefox/142.0"
 
 // Builder is a builder for the request to the ADP API. The zero value is not sendable and must have at least one salary
 // or hourly income source added before sending.
@@ -241,7 +245,7 @@ func (builder *Builder) HandleError() error {
 		return nil
 	}
 
-	err := fmt.Errorf(builder.errorMessage)
+	err := errors.New(builder.errorMessage)
 	builder.errorMessage = ""
 
 	return err
@@ -271,7 +275,8 @@ func (builder *Builder) Send() (*response.Response, error) {
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set("Referer", "https://www.adp.com/")
+	httpRequest.Header.Set("Referer", referer)
+	httpRequest.Header.Set("User-Agent", userAgent)
 
 	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
