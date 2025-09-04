@@ -369,7 +369,7 @@ func (builder *Builder) buildRequest() *Request {
 // is returned. This does not guarantee that the builder is sendable nor is it guaranteed to be valid after this.
 func (builder *Builder) validate() error {
 	if builder.errorMessage != "" {
-		return fmt.Errorf(builder.errorMessage)
+		return errors.New(builder.errorMessage)
 	}
 
 	return nil
