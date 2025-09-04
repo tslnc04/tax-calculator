@@ -104,7 +104,7 @@ func (pfc *PayFrequencyCode) Set(value string) error {
 		*pfc = MonthlyPayFrequencyCode
 	case "semi-monthly":
 		*pfc = SemiMonthlyPayFrequencyCode
-	case "biweekly":
+	case "bi-weekly":
 		*pfc = BiWeeklyPayFrequencyCode
 	case "weekly":
 		*pfc = WeeklyPayFrequencyCode
