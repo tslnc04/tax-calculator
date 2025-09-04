@@ -263,7 +263,17 @@ func (builder *Builder) Send() (*response.Response, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(builder.URL, "application/json", bytes.NewBuffer(requestJSON))
+	httpRequest, err := http.NewRequest("POST", builder.URL, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		glog.V(10).Infof("Failed to create HTTP request to ADP API: %s", err)
+
+		return nil, err
+	}
+
+	httpRequest.Header.Set("Content-Type", "application/json")
+	httpRequest.Header.Set("Referer", "https://www.adp.com/")
+
+	resp, err := http.DefaultClient.Do(httpRequest)
 	if err != nil {
 		glog.V(10).Infof("Failed to send request to ADP API: %s", err)
 
